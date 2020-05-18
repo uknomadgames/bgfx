@@ -15,6 +15,7 @@
 			|| BX_PLATFORM_RPI                            \
 			|| BX_PLATFORM_STEAMLINK                      \
 			|| BX_PLATFORM_WINDOWS                        \
+			|| BX_PLATFORM_PS4		                      \
 			) )
 
 #define BGFX_USE_WGL (BGFX_CONFIG_RENDERER_OPENGL && BX_PLATFORM_WINDOWS)
@@ -28,6 +29,7 @@
 			|| BX_PLATFORM_LINUX   \
 			|| BX_PLATFORM_OSX     \
 			|| BX_PLATFORM_WINDOWS \
+			|| 0 \
 			)
 
 #if BGFX_CONFIG_RENDERER_OPENGL
@@ -52,6 +54,7 @@
 #			undef GL_VERSION_1_4
 #			undef GL_VERSION_1_5
 #			undef GL_VERSION_2_0
+#		elif BX_PLATFORM_PS4
 #		else
 #			include <GL/gl.h>
 #		endif // BX_PLATFORM_
@@ -72,12 +75,18 @@ typedef double GLdouble;
 #define GL_TEXTURE_WRAP_R_OES                                   0x8072
 #define GL_PROGRAM_BINARY_LENGTH_OES                            0x8741
 #		else
+#		if defined NM_PLATFORM_SWITCH
+#			include <nn/gll.h>
+#			include <GLES2/gl2platform.h>
+#		else
 #			include <GLES2/gl2platform.h>
 #			include <GLES2/gl2.h>
 #			include <GLES2/gl2ext.h>
+#		endif
 #		endif // BX_PLATFORM_
 typedef int64_t  GLint64;
 typedef uint64_t GLuint64;
+#if !defined NM_PLATFORM_SWITCH
 #		define GL_PROGRAM_BINARY_LENGTH GL_PROGRAM_BINARY_LENGTH_OES
 #		define GL_HALF_FLOAT GL_HALF_FLOAT_OES
 #		define GL_RGBA8 GL_RGBA8_OES
@@ -97,10 +106,16 @@ typedef uint64_t GLuint64;
 #		define GL_DEPTH24_STENCIL8 GL_DEPTH24_STENCIL8_OES
 #		define GL_DEPTH_COMPONENT32 GL_DEPTH_COMPONENT32_OES
 #		define GL_UNSIGNED_INT_24_8 GL_UNSIGNED_INT_24_8_OES
+#endif
 #	elif BGFX_CONFIG_RENDERER_OPENGLES >= 30
-#		include <GLES3/gl3platform.h>
-#		include <GLES3/gl3.h>
-#		include <GLES3/gl3ext.h>
+#		if defined NM_PLATFORM_SWITCH
+#			include <nn/gll.h>
+#			include <GLES3/gl3platform.h>
+#		else
+#			include <GLES3/gl3platform.h>
+#			include <GLES3/gl3.h>
+#			include <GLES3/gl3ext.h>
+#		endif
 #	endif // BGFX_CONFIG_RENDERER_
 
 #	if BGFX_USE_EGL
@@ -1037,7 +1052,7 @@ typedef uint64_t GLuint64;
 #	define GL_APIENTRYP GL_APIENTRY*
 #endif // GL_APIENTRYP
 
-#if !BGFX_CONFIG_RENDERER_OPENGL
+#if !BGFX_CONFIG_RENDERER_OPENGL && !defined NM_PLATFORM_SWITCH
 #	define glClearDepth glClearDepthf
 #endif // !BGFX_CONFIG_RENDERER_OPENGL
 
@@ -1071,9 +1086,13 @@ namespace bgfx { namespace gl
 #	define GL_CHECK_I(_call) _call
 #endif // BGFX_CONFIG_DEBUG
 
+#if !defined NM_PLATFORM_SWITCH
 #define GL_IMPORT_TYPEDEFS 1
 #define GL_IMPORT(_optional, _proto, _func, _import) extern _proto _func
 #include "glimports.h"
+#else
+	typedef void           (GL_APIENTRYP PFNGLINSERTEVENTMARKEREXTPROC) (GLsizei length, const GLchar *marker);
+#endif
 
 	class SamplerStateCache
 	{
@@ -1152,7 +1171,7 @@ namespace bgfx { namespace gl
 		{
 			BX_CHECK(0 != m_id, "Updating invalid index buffer.");
 
-			if (_discard)
+			//if (_discard)
 			{
 				// orphan buffer...
 				destroy();
@@ -1196,11 +1215,13 @@ namespace bgfx { namespace gl
 			GL_CHECK(glBindBuffer(m_target, 0) );
 		}
 
+#if(0)
+
 		void update(uint32_t _offset, uint32_t _size, void* _data, bool _discard = false)
 		{
 			BX_CHECK(0 != m_id, "Updating invalid vertex buffer.");
 
-			if (_discard)
+			//if (_discard)
 			{
 				// orphan buffer...
 				destroy();
@@ -1215,6 +1236,29 @@ namespace bgfx { namespace gl
 				) );
 			GL_CHECK(glBindBuffer(m_target, 0) );
 		}
+
+#else // NOMAD FIX - better fps on nexus 7, fixes s4 too
+		void update(uint32_t _offset, uint32_t _size, void* _data, bool _discard = false)
+		{
+			BX_CHECK(0 != m_id, "Updating invalid vertex buffer.");
+			GL_CHECK(glBindBuffer(m_target, m_id));
+
+#if BX_PLATFORM_ANDROID
+			GL_CHECK(glBufferData(m_target
+				, _size
+				, NULL
+				, GL_DYNAMIC_DRAW
+			));
+#endif
+
+			GL_CHECK(glBufferSubData(m_target
+				, _offset
+				, _size
+				, _data
+			));
+			GL_CHECK(glBindBuffer(m_target, 0));
+		}
+#endif
 
 		void destroy();
 
@@ -1277,6 +1321,7 @@ namespace bgfx { namespace gl
 			, m_type(0)
 			, m_hash(0)
 		{
+			m_hash = 0;
 		}
 
 		void create(const Memory* _mem);

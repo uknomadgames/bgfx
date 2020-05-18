@@ -469,8 +469,10 @@ GLAPI void APIENTRY glBlendEquation (GLenum mode);
 typedef long GLsizeiptr;
 typedef long GLintptr;
 #else
+#if !defined OSX_BUILD
 typedef ptrdiff_t GLsizeiptr;
 typedef ptrdiff_t GLintptr;
+#endif
 #endif
 #define GL_BUFFER_SIZE                    0x8764
 #define GL_BUFFER_USAGE                   0x8765
@@ -4666,8 +4668,11 @@ GLAPI void APIENTRY glVertexBlendARB (GLint count);
 typedef long GLsizeiptrARB;
 typedef long GLintptrARB;
 #else
+#if !defined OSX_BUILD
 typedef ptrdiff_t GLsizeiptrARB;
 typedef ptrdiff_t GLintptrARB;
+#endif
+
 #endif
 #define GL_BUFFER_SIZE_ARB                0x8764
 #define GL_BUFFER_USAGE_ARB               0x8765

@@ -74,8 +74,13 @@ namespace ImGui
 #include "widgets/color_picker.inl"
 #include "widgets/color_wheel.inl"
 #include "widgets/dock.inl"
+#ifndef NM_PLATFORM_ORBIS
 #include "widgets/file_list.inl"
+#endif
+#ifndef XBOX_BUILD
 #include "widgets/gizmo.inl"
+#endif
 #include "widgets/memory_editor.inl"
 #include "widgets/range_slider.inl"
+#include "widgets/nm_user.inl"
 

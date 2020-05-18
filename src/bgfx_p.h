@@ -9,20 +9,36 @@
 #include <bx/platform.h>
 
 #ifndef BGFX_CONFIG_DEBUG
-#	define BGFX_CONFIG_DEBUG 0
+#ifdef NM_DEBUG
+#define BGFX_CONFIG_DEBUG 1
+#else
+#define BGFX_CONFIG_DEBUG 0
+#endif
 #endif // BGFX_CONFIG_DEBUG
 
 #if BGFX_CONFIG_DEBUG || BX_COMPILER_CLANG_ANALYZER
+#ifdef BX_TRACE
+#undef BX_TRACE
+#endif
 #	define BX_TRACE _BX_TRACE
+#ifdef BX_WARN
+#undef BX_WARN
+#endif
 #	define BX_WARN  _BX_WARN
+#ifdef BX_CHECK
+#undef BX_CHECK
+#endif
 #	define BX_CHECK _BX_CHECK
-#	define BX_CONFIG_ALLOCATOR_DEBUG 1
+// #	define BX_CONFIG_ALLOCATOR_DEBUG 1
 #endif // BGFX_CONFIG_DEBUG
 
 #include <bgfx/bgfx.h>
 #include "config.h"
 
-#include <inttypes.h>
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS
+#endif
+#include "inttypes.h"
 
 // Check handle, cannot be bgfx::kInvalidHandle and must be valid.
 #define BGFX_CHECK_HANDLE(_desc, _handleAlloc, _handle)    \
@@ -149,7 +165,9 @@ namespace bgfx
 		static void static_deallocate(void* _ptr, size_t /*_bytes*/);
 	};
 } // namespace bgfx
+#ifndef TINYSTL_ALLOCATOR
 #	define TINYSTL_ALLOCATOR bgfx::TinyStlAllocator
+#endif
 #	include <tinystl/string.h>
 #	include <tinystl/unordered_map.h>
 #	include <tinystl/unordered_set.h>

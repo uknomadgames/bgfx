@@ -14,6 +14,9 @@
 
 BX_ERROR_RESULT(BGFX_ERROR_TEXTURE_VALIDATION,  BX_MAKEFOURCC('b', 'g', 0, 1) );
 
+extern uint8_t *nmLoadEmeddedShader(const char *pBaseName, uint32_t &size);
+
+
 namespace bgfx
 {
 #define BGFX_API_THREAD_MAGIC UINT32_C(0x78666762)
@@ -444,12 +447,14 @@ namespace bgfx
 #include "fs_clear6.bin.h"
 #include "fs_clear7.bin.h"
 
-	static const EmbeddedShader s_embeddedShaders[] =
+	static EmbeddedShader s_embeddedShaders[] =
 	{
+		BGFX_EMBEDDED_SHADER(fs_clear0),
+		BGFX_EMBEDDED_SHADER(vs_clear),
+
 		BGFX_EMBEDDED_SHADER(vs_debugfont),
 		BGFX_EMBEDDED_SHADER(fs_debugfont),
-		BGFX_EMBEDDED_SHADER(vs_clear),
-		BGFX_EMBEDDED_SHADER(fs_clear0),
+#if !defined BX_PLATFORM_ORBIS
 		BGFX_EMBEDDED_SHADER(fs_clear1),
 		BGFX_EMBEDDED_SHADER(fs_clear2),
 		BGFX_EMBEDDED_SHADER(fs_clear3),
@@ -457,12 +462,42 @@ namespace bgfx
 		BGFX_EMBEDDED_SHADER(fs_clear5),
 		BGFX_EMBEDDED_SHADER(fs_clear6),
 		BGFX_EMBEDDED_SHADER(fs_clear7),
-
+#endif
 		BGFX_EMBEDDED_SHADER_END()
 	};
 
+	static bool bLoadedEmbeddedShaders = false;
+
+
+	void loadEmbeddedShaders()
+	{
+		for (EmbeddedShader* es = s_embeddedShaders; NULL != es->name; ++es)
+		{
+			BX_TRACE("%s", es->name);
+			uint32_t size;
+			es->data[0].pDynData = nullptr;
+
+			auto data = nmLoadEmeddedShader(es->name,size);
+			if (size)
+			{
+				EmbeddedShader *pEs = (EmbeddedShader*)es;
+				pEs->data[0].pDynData = data;
+				pEs->data[0].size = size;
+			}
+		}
+
+		bLoadedEmbeddedShaders = true;
+
+	}
+
 	ShaderHandle createEmbeddedShader(const EmbeddedShader* _es, RendererType::Enum _type, const char* _name)
 	{
+#if defined NM_PLATFORM_ORBIS
+		if (!bLoadedEmbeddedShaders)
+		{
+			loadEmbeddedShaders();
+		}
+#endif
 		for (const EmbeddedShader* es = _es; NULL != es->name; ++es)
 		{
 			if (0 == bx::strCmp(_name, es->name) )
@@ -472,7 +507,11 @@ namespace bgfx
 					if (_type == esd->type
 					&&  1 < esd->size)
 					{
-						ShaderHandle handle = createShader(makeRef(esd->data, esd->size) );
+						auto pData = esd->data;
+						if (esd->pDynData)
+							pData = esd->pDynData;
+						BX_TRACE("createshader %s", es->name);
+						ShaderHandle handle = createShader(makeRef(pData, esd->size) );
 						if (isValid(handle) )
 						{
 							setName(handle, _name);
@@ -1644,10 +1683,12 @@ namespace bgfx
 		TextureFormat::ETC2,
 		TextureFormat::ETC2A,
 		TextureFormat::ETC2A1,
+#if !defined NM_PLATFORM_IOS
 		TextureFormat::PTC12,
 		TextureFormat::PTC14,
 		TextureFormat::PTC12A,
 		TextureFormat::PTC14A,
+#endif
 		TextureFormat::PTC22,
 		TextureFormat::PTC24,
 		TextureFormat::ATC,
@@ -2055,6 +2096,7 @@ namespace bgfx
 		encoderApiWait();
 #endif // BGFX_CONFIG_MULTITHREADED
 
+		BX_CHECK(m_submit, "");
 		m_submit->m_capture = _capture;
 
 		BGFX_PROFILER_SCOPE("bgfx/API thread frame", 0xff2040ff);
@@ -2335,7 +2377,7 @@ namespace bgfx
 		{ d3d11::rendererCreate, d3d11::rendererDestroy, BGFX_RENDERER_DIRECT3D11_NAME, !!BGFX_CONFIG_RENDERER_DIRECT3D11 }, // Direct3D11
 		{ d3d12::rendererCreate, d3d12::rendererDestroy, BGFX_RENDERER_DIRECT3D12_NAME, !!BGFX_CONFIG_RENDERER_DIRECT3D12 }, // Direct3D12
 		{ gnm::rendererCreate,   gnm::rendererDestroy,   BGFX_RENDERER_GNM_NAME,        !!BGFX_CONFIG_RENDERER_GNM        }, // GNM
-#if BX_PLATFORM_OSX || BX_PLATFORM_IOS
+#if (BX_PLATFORM_OSX || BX_PLATFORM_IOS) && BGFX_CONFIG_RENDERER_METAL
 		{ mtl::rendererCreate,   mtl::rendererDestroy,   BGFX_RENDERER_METAL_NAME,      !!BGFX_CONFIG_RENDERER_METAL      }, // Metal
 #else
 		{ noop::rendererCreate,  noop::rendererDestroy,  BGFX_RENDERER_NOOP_NAME,       false                             }, // Noop

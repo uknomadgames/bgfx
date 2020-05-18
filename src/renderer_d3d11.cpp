@@ -646,6 +646,7 @@ namespace bgfx { namespace d3d11
 			, m_renderDocDll(NULL)
 			, m_agsDll(NULL)
 			, m_ags(NULL)
+			, m_msaaRt(NULL)
 			, m_featureLevel(D3D_FEATURE_LEVEL(0) )
 			, m_swapChain(NULL)
 			, m_lost(false)
@@ -1185,7 +1186,7 @@ namespace bgfx { namespace d3d11
 				}
 				else
 				{
-					g_caps.limits.maxComputeBindings = bx::min(BGFX_MAX_COMPUTE_BINDINGS
+					g_caps.limits.maxComputeBindings = bx::min<uint16_t>(BGFX_MAX_COMPUTE_BINDINGS
 						, D3D_FEATURE_LEVEL_11_1 <= m_featureLevel
 						? D3D11_1_UAV_SLOT_COUNT
 						: D3D11_PS_CS_UAV_REGISTER_COUNT

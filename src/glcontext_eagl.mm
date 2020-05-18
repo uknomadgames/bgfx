@@ -167,6 +167,9 @@ namespace bgfx { namespace gl
 		BX_UNUSED(_width, _height);
 		CAEAGLLayer* layer = (CAEAGLLayer*)g_platformData.nwh;
 		layer.opaque = [layer.style valueForKey:@"opaque"] == nil ? true : [[layer.style valueForKey:@"opaque"] boolValue];
+        
+        // nomad retina/dpi
+        layer.contentsScale = [UIScreen mainScreen].scale;
 
 		layer.drawableProperties = [NSDictionary dictionaryWithObjectsAndKeys
 			: [NSNumber numberWithBool:false]
@@ -212,10 +215,14 @@ namespace bgfx { namespace gl
 		GL_CHECK(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_depthStencilRbo) );
 		GL_CHECK(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_depthStencilRbo) );
 
-		BX_CHECK(GL_FRAMEBUFFER_COMPLETE ==  glCheckFramebufferStatus(GL_FRAMEBUFFER)
-			, "glCheckFramebufferStatus failed 0x%08x"
-			, glCheckFramebufferStatus(GL_FRAMEBUFFER)
-			);
+		// nomad
+		//BX_CHECK(GL_FRAMEBUFFER_COMPLETE ==
+        	// glCheckFramebufferStatus(GL_FRAMEBUFFER);
+		//	, "glCheckFramebufferStatus failed 0x%08x"
+		//	, glCheckFramebufferStatus(GL_FRAMEBUFFER)
+		//	);
+        
+        	// GLenum gl_err = glGetError();
 
 		makeCurrent();
 		GL_CHECK(glClearColor(0.0f, 0.0f, 0.0f, 0.0f) );

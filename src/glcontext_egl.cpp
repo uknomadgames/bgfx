@@ -85,7 +85,6 @@ EGL_IMPORT
 	}
 
 #else
-
 	void* eglOpen()
 	{
 		return NULL;
@@ -96,8 +95,10 @@ EGL_IMPORT
 	}
 #endif // BGFX_USE_GL_DYNAMIC_LIB
 
+#if !defined NM_PLATFORM_SWITCH
 #	define GL_IMPORT(_optional, _proto, _func, _import) _proto _func = NULL
 #	include "glimports.h"
+#endif
 
 	static EGLint s_contextAttrs[16];
 
@@ -195,6 +196,43 @@ EGL_IMPORT
 			BX_TRACE("Supported EGL extensions:");
 			dumpExtensions(extensions);
 
+#if defined NM_PLATFORM_SWITCH
+			EGLint attrs[] = {
+				/*
+				* Require OpenGL ES2/ES3 support.
+				* If you need OpenGL (not ES) supprot, you should specify EGL_OPENGL_BIT.
+				*/
+				EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+				EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+				EGL_RED_SIZE, 8,
+				EGL_GREEN_SIZE, 8,
+				EGL_BLUE_SIZE, 8,
+				EGL_ALPHA_SIZE, 8,
+				EGL_NONE
+			};
+
+#else
+#if defined NM_PLATFORM_ORBIS
+
+
+	// Setup surface requirements of EGL Configuration
+	EGLint attrs[] =
+	{
+		EGL_RED_SIZE, 8,
+		EGL_GREEN_SIZE, 8,
+		EGL_BLUE_SIZE, 8,
+		EGL_ALPHA_SIZE, 8,
+		EGL_DEPTH_SIZE, 16,
+		EGL_STENCIL_SIZE, 8,
+		EGL_SAMPLE_BUFFERS, 0,
+		EGL_SAMPLES,		0,
+		EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+		EGL_SURFACE_TYPE, EGL_WINDOW_BIT, 
+ 		EGL_NONE
+	};
+
+#else
+
 			// https://www.khronos.org/registry/EGL/extensions/ANDROID/EGL_ANDROID_recordable.txt
 			const bool hasEglAndroidRecordable = !bx::findIdentifierMatch(extensions, "EGL_ANDROID_recordable").isEmpty();
 
@@ -216,12 +254,14 @@ EGL_IMPORT
 				EGL_NONE
 			};
 
+#endif
+#endif
+
 			EGLint numConfig = 0;
 			success = eglChooseConfig(m_display, attrs, &m_config, 1, &numConfig);
 			BGFX_FATAL(success, Fatal::UnableToInitialize, "eglChooseConfig");
-
+			
 #	if BX_PLATFORM_ANDROID
-
 			EGLint format;
 			eglGetConfigAttrib(m_display, m_config, EGL_NATIVE_VISUAL_ID, &format);
 			ANativeWindow_setBuffersGeometry( (ANativeWindow*)g_platformData.nwh, _width, _height, format);
@@ -252,20 +292,35 @@ EGL_IMPORT
 
 			vc_dispmanx_update_submit_sync(dispmanUpdate);
 #	endif // BX_PLATFORM_ANDROID
-
+//#if defined NM_PLATFORM_SWITCH
+//			m_surface = eglCreateWindowSurface(m_display, m_config,static_cast<NativeWindowType>( g_platformData.nwh), 0);
+//			GLboolean bRes = eglBindAPI(EGL_OPENGL_ES_API);
+//			BGFX_FATAL(m_surface != EGL_NO_SURFACE, Fatal::UnableToInitialize, "Failed to create surface.");
+//#else
+//			m_surface = eglCreateWindowSurface(m_display, m_config, nwh, NULL);
+//			BGFX_FATAL(m_surface != EGL_NO_SURFACE, Fatal::UnableToInitialize, "Failed to create surface.");
+//#endif
 			m_surface = eglCreateWindowSurface(m_display, m_config, nwh, NULL);
 			BGFX_FATAL(m_surface != EGL_NO_SURFACE, Fatal::UnableToInitialize, "Failed to create surface.");
+#if defined NM_PLATFORM_SWITCH
+			GLboolean bRes = eglBindAPI(EGL_OPENGL_ES_API);
+			BGFX_FATAL(bRes != false, Fatal::UnableToInitialize, "Failed to bind");
+#endif
 
-			const bool hasEglKhrCreateContext = !bx::findIdentifierMatch(extensions, "EGL_KHR_create_context").isEmpty();
-			const bool hasEglKhrNoError       = !bx::findIdentifierMatch(extensions, "EGL_KHR_create_context_no_error").isEmpty();
 
-			const uint32_t gles = BGFX_CONFIG_RENDERER_OPENGLES;
 
 			for (uint32_t ii = 0; ii < 2; ++ii)
 			{
 				bx::StaticMemoryBlockWriter writer(s_contextAttrs, sizeof(s_contextAttrs) );
 
+
 				EGLint flags = 0;
+				BX_UNUSED(flags);
+#  if !defined NM_PLATFORM_SWITCH
+
+				const uint32_t gles = BGFX_CONFIG_RENDERER_OPENGLES;
+				const bool hasEglKhrCreateContext = !bx::findIdentifierMatch(extensions, "EGL_KHR_create_context").isEmpty();
+				const bool hasEglKhrNoError       = !bx::findIdentifierMatch(extensions, "EGL_KHR_create_context_no_error").isEmpty();
 
 #	if BX_PLATFORM_RPI
 				BX_UNUSED(hasEglKhrCreateContext, hasEglKhrNoError);
@@ -301,7 +356,14 @@ EGL_IMPORT
 					bx::write(&writer, EGLint(EGL_CONTEXT_CLIENT_VERSION) );
 					bx::write(&writer, 2);
 				}
-
+# else
+				bx::write(&writer, EGLint(EGL_CONTEXT_MAJOR_VERSION));
+				bx::write(&writer, EGLint(3));
+				bx::write(&writer, EGLint(EGL_CONTEXT_MINOR_VERSION));
+				bx::write(&writer, EGLint(2));
+				bx::write(&writer, EGLint(EGL_CONTEXT_FLAGS_KHR) );
+				bx::write(&writer, EGLint(EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR) );
+#endif
 				bx::write(&writer, EGLint(EGL_NONE) );
 
 				m_context = eglCreateContext(m_display, m_config, EGL_NO_CONTEXT, s_contextAttrs);
@@ -320,6 +382,11 @@ EGL_IMPORT
 			m_current = NULL;
 
 			eglSwapInterval(m_display, 0);
+
+#if defined NM_PLATFORM_SWITCH
+			nngllInitializeGl();
+#endif
+
 		}
 
 		import();
@@ -459,7 +526,10 @@ EGL_IMPORT
 						} \
 					}
 #	endif // BX_PLATFORM_
+
+#if !defined NM_PLATFORM_SWITCH
 #	include "glimports.h"
+#endif
 	}
 
 } /* namespace gl */ } // namespace bgfx

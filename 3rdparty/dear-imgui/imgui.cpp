@@ -2897,6 +2897,11 @@ int ImGui::GetFrameCount()
     return GImGui->FrameCount;
 }
 
+int ImGui::GetEndFrameCount()
+{
+	return GImGui->FrameCountEnded;
+}
+
 ImDrawList* ImGui::GetOverlayDrawList()
 {
     return &GImGui->OverlayDrawList;

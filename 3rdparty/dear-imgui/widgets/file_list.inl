@@ -1,6 +1,8 @@
 #include <bx/bx.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#define __STDC_FORMAT_MACROS
+#include "inttypes.h"
 
 namespace ImGui
 {
@@ -85,7 +87,7 @@ namespace ImGui
 					}
 					else
 					{
-						Text("%10" PRId64, it->Size);
+//						Text("%10" PRId64, it->Size);
 					}
 
 					if (clicked)

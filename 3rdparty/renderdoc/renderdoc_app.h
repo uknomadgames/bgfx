@@ -39,6 +39,7 @@
 #define RENDERDOC_CC
 #elif defined(__APPLE__)
 #define RENDERDOC_CC
+#elif defined(NM_PLATFORM_SWITCH) || defined NM_PLATFORM_ORBIS
 #else
 #error "Unknown platform"
 #endif

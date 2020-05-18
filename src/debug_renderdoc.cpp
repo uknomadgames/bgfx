@@ -63,7 +63,7 @@ namespace bgfx
 	{
 		if (NULL != s_renderDoc)
 		{
-			return s_renderDocDll;
+			return s_renderDoc;
 		}
 
 		// Skip loading RenderDoc when IntelGPA is present to avoid RenderDoc crash.
@@ -74,7 +74,11 @@ namespace bgfx
 
 		void* renderDocDll = bx::dlopen(
 #if BX_PLATFORM_WINDOWS
-				"renderdoc.dll"
+#if NM_ARCH_64
+				"C:\\Program Files\\RenderDoc\\renderdoc.dll"
+#else
+				"C:\\Program Files\\RenderDoc\\x86\\renderdoc.dll"
+#endif
 #else
 				"./librenderdoc.so"
 #endif // BX_PLATFORM_WINDOWS
@@ -96,9 +100,12 @@ namespace bgfx
 
 				s_renderDoc->SetCaptureOptionU32(eRENDERDOC_Option_AllowVSync,      1);
 				s_renderDoc->SetCaptureOptionU32(eRENDERDOC_Option_SaveAllInitials, 1);
+				// s_renderDoc->SetCaptureOptionU32(eRENDERDOC_Option_APIValidation, 1);
 
 				s_renderDoc->MaskOverlayBits(eRENDERDOC_Overlay_None, eRENDERDOC_Overlay_None);
 
+				int a, b, c;
+				s_renderDoc->GetAPIVersion(&a, &b, &c);
 				s_renderDocDll = renderDocDll;
 			}
 			else
@@ -108,7 +115,7 @@ namespace bgfx
 			}
 		}
 
-		return renderDocDll;
+		return s_renderDoc;
 	}
 
 	void unloadRenderDoc(void* _renderdocdll)

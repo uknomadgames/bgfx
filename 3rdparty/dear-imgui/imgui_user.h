@@ -46,6 +46,9 @@ namespace ImGui
 #include "widgets/color_wheel.h"
 #include "widgets/dock.h"
 #include "widgets/file_list.h"
+#ifndef XBOX_BUILD
 #include "widgets/gizmo.h"
+#endif
 #include "widgets/memory_editor.h"
 #include "widgets/range_slider.h"
+#include "widgets/nm_user.h"

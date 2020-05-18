@@ -9,9 +9,21 @@
 #	include "renderer_gl.h"
 #	include <bx/timer.h>
 #	include <bx/uint32_t.h>
+//#include <nn/gll.h>
+//#include <stdio.h>
+
+#ifdef NM_PLATFORM_SWITCH
+#define ENABLE_LODBIAS 0
+#else
+#define ENABLE_LODBIAS 0
+#endif
 
 namespace bgfx { namespace gl
 {
+#if defined NM_PLATFORM_SWITCH
+	PFNGLINSERTEVENTMARKEREXTPROC glInsertEventMarker = nullptr;
+#endif
+
 	static char s_viewName[BGFX_CONFIG_MAX_VIEWS][BGFX_CONFIG_MAX_VIEW_NAME];
 
 	struct PrimInfo
@@ -849,6 +861,7 @@ namespace bgfx { namespace gl
 	};
 	BX_STATIC_ASSERT(Extension::Count == BX_COUNTOF(s_extension) );
 
+#if !defined NM_PLATFORM_ORBIS
 	static const char* s_ARB_shader_texture_lod[] =
 	{
 		"texture2DLod",
@@ -986,6 +999,8 @@ namespace bgfx { namespace gl
 		"centroid",
 		NULL
 	};
+
+#endif
 
 	static void GL_APIENTRY stubVertexAttribDivisor(GLuint /*_index*/, GLuint /*_divisor*/)
 	{
@@ -1703,9 +1718,11 @@ BX_TRACE("%d, %d, %d, %s", _array, _srgb, _mipAutogen, getName(_format) );
 		void reset()
 		{
 			m_detachShader = true;
+			m_shouldOrphanVBs = true;
 		}
 
 		bool m_detachShader;
+		bool m_shouldOrphanVBs;
 	};
 
 	struct RendererContextGL : public RendererContextI
@@ -1868,7 +1885,14 @@ BX_TRACE("%d, %d, %d, %s", _array, _srgb, _mipAutogen, getName(_format) );
 			{
 				m_workaround.m_detachShader = false;
 			}
-
+			// nomad
+			if (BX_ENABLED(BGFX_CONFIG_RENDERER_OPENGLES)
+			&&  0 == bx::strCmp(m_vendor,  "Qualcomm")
+			&&  !bx::strFind(m_version, "V@84.0").isEmpty() )
+			{
+				m_workaround.m_shouldOrphanVBs = false;
+			}
+			// end
 			if (BX_ENABLED(BGFX_CONFIG_RENDERER_USE_EXTENSIONS) )
 			{
 				const char* extensions = (const char*)glGetString(GL_EXTENSIONS);
@@ -1930,7 +1954,7 @@ BX_TRACE("%d, %d, %d, %s", _array, _srgb, _mipAutogen, getName(_format) );
 				BX_TRACE("Init error: ARB_framebuffer_object not supported.");
 				goto error;
 			}
-
+			BX_TRACE("checking texture format support");
 			{
 				// Allow all texture filters.
 				bx::memSet(s_textureFilter, true, BX_COUNTOF(s_textureFilter) );
@@ -2145,7 +2169,14 @@ BX_TRACE("%d, %d, %d, %s", _array, _srgb, _mipAutogen, getName(_format) );
 					|| s_extension[Extension::ARB_compute_shader].m_supported
 					;
 
-				for (uint32_t ii = 0; ii < TextureFormat::Count; ++ii)
+                for (uint32_t ii = 0; ii < TextureFormat::Count; ++ii)
+                    g_caps.formats[ii] = s_textureFormat[ii].m_supported;
+
+                for (uint32_t ii = BX_ENABLED(BX_PLATFORM_IOS) || BX_ENABLED(BX_PLATFORM_ANDROID) ? TextureFormat::Unknown : 0 // skip test on iOS!
+                     ; ii < TextureFormat::Count
+                     ; ++ii
+                )
+				// for (uint32_t ii = 0; ii < TextureFormat::Count; ++ii)
 				{
 					uint16_t supported = BGFX_CAPS_FORMAT_TEXTURE_NONE;
 					supported |= s_textureFormat[ii].m_supported
@@ -2155,17 +2186,22 @@ BX_TRACE("%d, %d, %d, %s", _array, _srgb, _mipAutogen, getName(_format) );
 						: BGFX_CAPS_FORMAT_TEXTURE_NONE
 						;
 
-					supported |= isTextureFormatValid(TextureFormat::Enum(ii), true)
-						? BGFX_CAPS_FORMAT_TEXTURE_2D_SRGB
-						| BGFX_CAPS_FORMAT_TEXTURE_3D_SRGB
-						| BGFX_CAPS_FORMAT_TEXTURE_CUBE_SRGB
-						: BGFX_CAPS_FORMAT_TEXTURE_NONE
-						;
+#if !defined NM_PLATFORM_IOS && !defined NM_PLATFORM_ANDROID
 
-					supported |= isTextureFormatValid(TextureFormat::Enum(ii), false, true)
-						? BGFX_CAPS_FORMAT_TEXTURE_MIP_AUTOGEN
-						: BGFX_CAPS_FORMAT_TEXTURE_NONE
-						;
+				supported |= isTextureFormatValid(TextureFormat::Enum(ii), true)
+					? BGFX_CAPS_FORMAT_TEXTURE_2D_SRGB
+					| BGFX_CAPS_FORMAT_TEXTURE_3D_SRGB
+					| BGFX_CAPS_FORMAT_TEXTURE_CUBE_SRGB
+					: BGFX_CAPS_FORMAT_TEXTURE_NONE
+					;
+
+
+
+				supported |= isTextureFormatValid(TextureFormat::Enum(ii), false, true)
+					? BGFX_CAPS_FORMAT_TEXTURE_MIP_AUTOGEN
+					: BGFX_CAPS_FORMAT_TEXTURE_NONE
+					;
+#endif
 
 					supported |= computeSupport
 						&& isImageFormatValid(TextureFormat::Enum(ii) )
@@ -2655,7 +2691,9 @@ BX_TRACE("%d, %d, %d, %s", _array, _srgb, _mipAutogen, getName(_format) );
 		{
 			VertexDecl& decl = m_vertexDecls[_handle.idx];
 			bx::memCopy(&decl, &_decl, sizeof(VertexDecl) );
+#if defined NM_SHOW_VERTEX_DECL
 			dump(decl);
+#endif
 		}
 
 		void destroyVertexDecl(VertexDeclHandle /*_handle*/) override
@@ -3403,7 +3441,7 @@ BX_TRACE("%d, %d, %d, %s", _array, _srgb, _mipAutogen, getName(_format) );
 						GL_CHECK(glSamplerParameteri(sampler, GL_TEXTURE_MAG_FILTER, magFilter) );
 						GL_CHECK(glSamplerParameteri(sampler, GL_TEXTURE_MIN_FILTER, minFilter) );
 
-						if (BX_ENABLED(BGFX_CONFIG_RENDERER_OPENGL) )
+						if (BX_ENABLED(BGFX_CONFIG_RENDERER_OPENGL) || BX_ENABLED(ENABLE_LODBIAS))
 						{
 							GL_CHECK(glSamplerParameterf(sampler, GL_TEXTURE_LOD_BIAS, float(BGFX_CONFIG_MIP_LOD_BIAS) ) );
 						}
@@ -3683,7 +3721,7 @@ BX_TRACE("%d, %d, %d, %s", _array, _srgb, _mipAutogen, getName(_format) );
 				if (BGFX_CLEAR_DEPTH & _clear.m_flags)
 				{
 					flags |= GL_DEPTH_BUFFER_BIT;
-					GL_CHECK(glClearDepth(_clear.m_depth) );
+					//GL_CHECK(glClearDepth(_clear.m_depth) );
 					GL_CHECK(glDepthMask(GL_TRUE) );
 				}
 
@@ -4164,6 +4202,9 @@ BX_TRACE("%d, %d, %d, %s", _array, _srgb, _mipAutogen, getName(_format) );
 		GLint activeUniforms = 0;
 		GLint activeBuffers  = 0;
 
+		BX_TRACE("Init - check device support");
+
+
 #if BGFX_CONFIG_RENDERER_OPENGL >= 31
 		GL_CHECK(glBindFragDataLocation(m_id, 0, "bgfx_FragColor") );
 #endif // BGFX_CONFIG_RENDERER_OPENGL >= 31
@@ -4459,6 +4500,8 @@ BX_TRACE("%d, %d, %d, %s", _array, _srgb, _mipAutogen, getName(_format) );
 				, BX_COUNTOF(m_instanceData)
 				);
 		m_instanceData[used] = 0xffff;
+
+		BX_TRACE("Done checking support");
 	}
 
 	void ProgramGL::bindAttributes(const VertexDecl& _vertexDecl, uint32_t _baseVertex)
@@ -5131,7 +5174,7 @@ BX_TRACE("%d, %d, %d, %s", _array, _srgb, _mipAutogen, getName(_format) );
 			GL_CHECK(glTexParameteri(target, GL_TEXTURE_MAG_FILTER, magFilter) );
 			GL_CHECK(glTexParameteri(target, GL_TEXTURE_MIN_FILTER, minFilter) );
 
-			if (BX_ENABLED(BGFX_CONFIG_RENDERER_OPENGL) )
+			if (BX_ENABLED(BGFX_CONFIG_RENDERER_OPENGL) || BX_ENABLED(ENABLE_LODBIAS))
 			{
 				GL_CHECK(glTexParameterf(target, GL_TEXTURE_LOD_BIAS, float(BGFX_CONFIG_MIP_LOD_BIAS) ) );
 			}
@@ -5295,10 +5338,12 @@ BX_TRACE("%d, %d, %d, %s", _array, _srgb, _mipAutogen, getName(_format) );
 		m_id = glCreateShader(m_type);
 		BX_WARN(0 != m_id, "Failed to create shader.");
 
-		bx::StringView code( (const char*)reader.getDataPtr(), shaderSize);
 
 		if (0 != m_id)
 		{
+#if !defined NM_PLATFORM_ORBIS
+			bx::StringView code((const char*)reader.getDataPtr(), shaderSize);
+
 			if (GL_COMPUTE_SHADER != m_type
 			&&  0 != bx::strCmp(code, "#version 430", 12) )
 			{
@@ -5786,8 +5831,17 @@ BX_TRACE("%d, %d, %d, %s", _array, _srgb, _mipAutogen, getName(_format) );
 
 				code = temp;
 			}
+			// GL_CHECK(glShaderSource(m_id, 1, (const GLchar**)&code, NULL));
+			#else
 
-			GL_CHECK(glShaderSource(m_id, 1, (const GLchar**)&code, NULL) );
+				int ps4codesize = _mem->size - (shaderSize + reader.getPos());
+				reader.seek(shaderSize + 1, bx::Whence::Current);
+				bx::StringView code( (const char*)reader.getDataPtr(), ps4codesize - 1);
+
+			#endif
+
+			GLint len = code.getLength();
+			GL_CHECK(glShaderSource(m_id, 1, (const GLchar**)&code, &len));
 			GL_CHECK(glCompileShader(m_id) );
 
 			GLint compiled = 0;
@@ -5821,20 +5875,20 @@ BX_TRACE("%d, %d, %d, %s", _array, _srgb, _mipAutogen, getName(_format) );
 
 				GL_CHECK(glDeleteShader(m_id) );
 				m_id = 0;
-				BGFX_FATAL(false, bgfx::Fatal::InvalidShader, "Failed to compile shader.");
+				// robhack BGFX_FATAL(false, bgfx::Fatal::InvalidShader, "Failed to compile shader.");
 			}
-			else if (BX_ENABLED(BGFX_CONFIG_DEBUG)
-				 &&  s_extension[Extension::ANGLE_translated_shader_source].m_supported
-				 &&  NULL != glGetTranslatedShaderSourceANGLE)
-			{
-				GLsizei len;
-				GL_CHECK(glGetShaderiv(m_id, GL_TRANSLATED_SHADER_SOURCE_LENGTH_ANGLE, &len) );
+			//else if (BX_ENABLED(BGFX_CONFIG_DEBUG)
+			//	 &&  s_extension[Extension::ANGLE_translated_shader_source].m_supported
+			//	 &&  NULL != glGetTranslatedShaderSourceANGLE)
+			//{
+			//	GLsizei len;
+			//	GL_CHECK(glGetShaderiv(m_id, GL_TRANSLATED_SHADER_SOURCE_LENGTH_ANGLE, &len) );
 
-				char* source = (char*)alloca(len);
-				GL_CHECK(glGetTranslatedShaderSourceANGLE(m_id, len, &len, source) );
+			//	char* source = (char*)alloca(len);
+			//	GL_CHECK(glGetTranslatedShaderSourceANGLE(m_id, len, &len, source) );
 
-				BX_TRACE("ANGLE source (len: %d):\n%s\n####", len, source);
-			}
+			//	BX_TRACE("ANGLE source (len: %d):\n%s\n####", len, source);
+			//}
 		}
 	}
 
@@ -6307,8 +6361,9 @@ BX_TRACE("%d, %d, %d, %s", _array, _srgb, _mipAutogen, getName(_format) );
 		uint32_t frameQueryIdx = UINT32_MAX;
 
 		if (m_timerQuerySupport
-		&&  !BX_ENABLED(BX_PLATFORM_OSX) )
-		{
+		&&  !BX_ENABLED(BX_PLATFORM_OSX)
+		&&  !BX_ENABLED(BX_PLATFORM_NX))
+      {
 			frameQueryIdx = m_gpuTimer.begin(BGFX_CONFIG_MAX_VIEWS);
 		}
 
@@ -6474,7 +6529,7 @@ BX_TRACE("%d, %d, %d, %s", _array, _srgb, _mipAutogen, getName(_format) );
 							char* viewName = s_viewName[view];
 							viewName[3] = ' ';
 							viewName[4] = eye ? 'R' : 'L';
-							GL_CHECK(glInsertEventMarker(0, viewName) );
+//							GL_CHECK(glInsertEventMarker(0, viewName) );
 						}
 
 						viewState.m_rect.m_x = eye * (viewState.m_rect.m_width+1)/2;
@@ -6487,7 +6542,7 @@ BX_TRACE("%d, %d, %d, %s", _array, _srgb, _mipAutogen, getName(_format) );
 							char* viewName = s_viewName[view];
 							viewName[3] = ' ';
 							viewName[4] = ' ';
-							GL_CHECK(glInsertEventMarker(0, viewName) );
+							//GL_CHECK(glInsertEventMarker(0, viewName) );
 						}
 					}
 
@@ -6528,7 +6583,7 @@ BX_TRACE("%d, %d, %d, %s", _array, _srgb, _mipAutogen, getName(_format) );
 						{
 							char* viewName = s_viewName[view];
 							viewName[3] = 'C';
-							GL_CHECK(glInsertEventMarker(0, viewName) );
+							//GL_CHECK(glInsertEventMarker(0, viewName) );
 						}
 					}
 
@@ -6658,7 +6713,7 @@ BX_TRACE("%d, %d, %d, %s", _array, _srgb, _mipAutogen, getName(_format) );
 					{
 						char* viewName = s_viewName[view];
 						viewName[3] = ' ';
-						GL_CHECK(glInsertEventMarker(0, viewName) );
+						//GL_CHECK(glInsertEventMarker(0, viewName) );
 					}
 				}
 

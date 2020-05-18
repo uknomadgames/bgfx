@@ -37,6 +37,8 @@
 		|| BX_PLATFORM_RPI              \
 		|| BX_PLATFORM_STEAMLINK        \
 		|| BX_PLATFORM_WINDOWS          \
+		|| NM_PLATFORM_SWITCH			\
+		|| NM_PLATFORM_ORBIS			\
 		)
 #define BGFX_PLATFORM_SUPPORTS_GLSL (0  \
 		|| BX_PLATFORM_BSD              \
@@ -66,16 +68,25 @@
 		{ _renderer, BX_CONCATENATE(_name, _dx11), BX_COUNTOF(BX_CONCATENATE(_name, _dx11) ) },
 #endif // BGFX_PLATFORM_SUPPORTS_DXBC
 
+#if 0
 #if BGFX_PLATFORM_SUPPORTS_PSSL
 #	undef  BGFX_EMBEDDED_SHADER_PSSL
 #	define BGFX_EMBEDDED_SHADER_PSSL(_renderer, _name) \
 		{ _renderer, BX_CONCATENATE(_name, _pssl), BX_CONCATENATE(_name, _pssl_size) },
 #endif // BGFX_PLATFORM_SUPPORTS_PSSL
+#endif
+
+#define glslname _glsl
+
+//#if defined BX_PLATFORM_PS4
+//#undef glslname
+//#define glslname _glsl_ps4
+//#endif
 
 #if BGFX_PLATFORM_SUPPORTS_ESSL
 #	undef  BGFX_EMBEDDED_SHADER_ESSL
 #	define BGFX_EMBEDDED_SHADER_ESSL(_renderer, _name) \
-		{ _renderer, BX_CONCATENATE(_name, _glsl), BX_COUNTOF(BX_CONCATENATE(_name, _glsl) ) },
+		{ _renderer, BX_CONCATENATE(_name, glslname), BX_COUNTOF(BX_CONCATENATE(_name, glslname) ) },
 #endif // BGFX_PLATFORM_SUPPORTS_ESSL
 
 #if BGFX_PLATFORM_SUPPORTS_GLSL
@@ -130,6 +141,7 @@ namespace bgfx
 			RendererType::Enum type;
 			const uint8_t* data;
 			uint32_t size;
+			uint8_t* pDynData;
 		};
 
 		const char* name;
