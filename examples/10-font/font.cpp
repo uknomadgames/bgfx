@@ -54,8 +54,8 @@ static const char* s_fontFilePath[] =
 class ExampleFont : public entry::AppI
 {
 public:
-	ExampleFont(const char* _name, const char* _description)
-		: entry::AppI(_name, _description)
+	ExampleFont(const char* _name, const char* _description, const char* _url)
+		: entry::AppI(_name, _description, _url)
 	{
 	}
 
@@ -86,6 +86,10 @@ public:
 						   , 1.0f
 						   , 0
 						   );
+
+		// Initialize Imgui
+		// This initializes the same allocator used by stb_truetype, so must do that before creating the font manager
+		imguiCreate();
 
 		// Init the text rendering system.
 		m_fontManager = new FontManager(512);
@@ -186,8 +190,6 @@ public:
 
 		// Create a transient buffer for real-time data.
 		m_transientText = m_textBufferManager->createTextBuffer(FONT_TYPE_ALPHA, BufferType::Transient);
-
-		imguiCreate();
 	}
 
 	virtual int shutdown() override
@@ -258,8 +260,8 @@ public:
 			m_textBufferManager->appendText(m_transientText, m_visitor10, "text buffer\n");
 			m_textBufferManager->appendText(m_transientText, m_visitor10, fpsText);
 
-			float at[3]  = { 0, 0,  0.0f };
-			float eye[3] = { 0, 0, -1.0f };
+			const bx::Vec3 at  = { 0.0f, 0.0f,  0.0f };
+			const bx::Vec3 eye = { 0.0f, 0.0f, -1.0f };
 
 			float view[16];
 			bx::mtxLookAt(view, eye, at);
@@ -329,4 +331,9 @@ public:
 
 } // namespace
 
-ENTRY_IMPLEMENT_MAIN(ExampleFont, "10-font", "Use the font system to display text and styled text.");
+ENTRY_IMPLEMENT_MAIN(
+	  ExampleFont
+	, "10-font"
+	, "Use the font system to display text and styled text."
+	, "https://bkaradzic.github.io/bgfx/examples.html#font"
+	);

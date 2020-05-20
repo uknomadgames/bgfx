@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2018 Branimir Karadzic. All rights reserved.
+ * Copyright 2011-2020 Branimir Karadzic. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
  */
 
@@ -107,7 +107,7 @@ namespace bgfx { namespace hlsl
 
 			if (g_verbose)
 			{
-				char filePath[MAX_PATH];
+				char filePath[bx::kMaxFilePath];
 				GetModuleFileNameA( (HMODULE)s_d3dcompilerdll, filePath, sizeof(filePath) );
 				BX_TRACE("Loaded %s compiler (%s).", compiler->fileName, filePath);
 			}
@@ -213,14 +213,14 @@ namespace bgfx { namespace hlsl
 
 	static const UniformRemap s_uniformRemap[] =
 	{
-		{ UniformType::Int1, D3D_SVC_SCALAR,         D3D_SVT_INT,         0, 0 },
+		{ UniformType::Sampler, D3D_SVC_SCALAR,         D3D_SVT_INT,         0, 0 },
 		{ UniformType::Vec4, D3D_SVC_VECTOR,         D3D_SVT_FLOAT,       0, 0 },
 		{ UniformType::Mat3, D3D_SVC_MATRIX_COLUMNS, D3D_SVT_FLOAT,       3, 3 },
 		{ UniformType::Mat4, D3D_SVC_MATRIX_COLUMNS, D3D_SVT_FLOAT,       4, 4 },
-		{ UniformType::Int1, D3D_SVC_OBJECT,         D3D_SVT_SAMPLER,     0, 0 },
-		{ UniformType::Int1, D3D_SVC_OBJECT,         D3D_SVT_SAMPLER2D,   0, 0 },
-		{ UniformType::Int1, D3D_SVC_OBJECT,         D3D_SVT_SAMPLER3D,   0, 0 },
-		{ UniformType::Int1, D3D_SVC_OBJECT,         D3D_SVT_SAMPLERCUBE, 0, 0 },
+		{ UniformType::Sampler, D3D_SVC_OBJECT,         D3D_SVT_SAMPLER,     0, 0 },
+		{ UniformType::Sampler, D3D_SVC_OBJECT,         D3D_SVT_SAMPLER2D,   0, 0 },
+		{ UniformType::Sampler, D3D_SVC_OBJECT,         D3D_SVT_SAMPLER3D,   0, 0 },
+		{ UniformType::Sampler, D3D_SVC_OBJECT,         D3D_SVT_SAMPLERCUBE, 0, 0 },
 	};
 
 	UniformType::Enum findUniformType(const D3D11_SHADER_TYPE_DESC& constDesc)
@@ -479,7 +479,7 @@ namespace bgfx { namespace hlsl
 								un.type = uniformType;
 								un.num = uint8_t(constDesc.Elements);
 								un.regIndex = uint16_t(varDesc.StartOffset);
-								un.regCount = BX_ALIGN_16(varDesc.Size) / 16;
+								un.regCount = bx::alignUp(varDesc.Size, 16) / 16;
 								_uniforms.push_back(un);
 
 								BX_TRACE("\t%s, %d, size %d, flags 0x%08x, %d (used)"
@@ -527,7 +527,7 @@ namespace bgfx { namespace hlsl
 					{
 						Uniform un;
 						un.name.assign(bindDesc.Name, (end.getPtr() - bindDesc.Name) );
-						un.type = UniformType::Enum(BGFX_UNIFORM_SAMPLERBIT | UniformType::Int1);
+						un.type = UniformType::Enum(BGFX_UNIFORM_SAMPLERBIT | UniformType::Sampler);
 						un.num = 1;
 						un.regIndex = uint16_t(bindDesc.BindPoint);
 						un.regCount = uint16_t(bindDesc.BindCount);
@@ -736,6 +736,8 @@ namespace bgfx { namespace hlsl
 				bx::write(_writer, un.num);
 				bx::write(_writer, un.regIndex);
 				bx::write(_writer, un.regCount);
+				bx::write(_writer, un.texComponent);
+				bx::write(_writer, un.texDimension);
 
 				BX_TRACE("%s, %s, %d, %d, %d"
 					, un.name.c_str()

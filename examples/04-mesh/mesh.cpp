@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2018 Branimir Karadzic. All rights reserved.
+ * Copyright 2011-2020 Branimir Karadzic. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
  */
 
@@ -13,8 +13,8 @@ namespace
 class ExampleMesh : public entry::AppI
 {
 public:
-	ExampleMesh(const char* _name, const char* _description)
-		: entry::AppI(_name, _description)
+	ExampleMesh(const char* _name, const char* _description, const char* _url)
+		: entry::AppI(_name, _description, _url)
 	{
 	}
 
@@ -103,8 +103,8 @@ public:
 			float time = (float)( (bx::getHPCounter()-m_timeOffset)/double(bx::getHPFrequency() ) );
 			bgfx::setUniform(u_time, &time);
 
-			float at[3]  = { 0.0f, 1.0f,  0.0f };
-			float eye[3] = { 0.0f, 1.0f, -2.5f };
+			const bx::Vec3 at  = { 0.0f, 1.0f,  0.0f };
+			const bx::Vec3 eye = { 0.0f, 1.0f, -2.5f };
 
 			// Set view and projection matrix for view 0.
 			{
@@ -152,4 +152,9 @@ public:
 
 } // namespace
 
-ENTRY_IMPLEMENT_MAIN(ExampleMesh, "04-mesh", "Loading meshes.");
+ENTRY_IMPLEMENT_MAIN(
+	  ExampleMesh
+	, "04-mesh"
+	, "Loading meshes."
+	, "https://bkaradzic.github.io/bgfx/examples.html#mesh"
+	);

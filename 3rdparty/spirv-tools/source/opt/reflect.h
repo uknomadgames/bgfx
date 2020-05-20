@@ -44,7 +44,11 @@ inline bool IsAnnotationInst(SpvOp opcode) {
 }
 inline bool IsTypeInst(SpvOp opcode) {
   return (opcode >= SpvOpTypeVoid && opcode <= SpvOpTypeForwardPointer) ||
-         opcode == SpvOpTypePipeStorage || opcode == SpvOpTypeNamedBarrier;
+         opcode == SpvOpTypePipeStorage || opcode == SpvOpTypeNamedBarrier ||
+         opcode == SpvOpTypeAccelerationStructureNV ||
+         opcode == SpvOpTypeAccelerationStructureKHR ||
+         opcode == SpvOpTypeRayQueryProvisionalKHR ||
+         opcode == SpvOpTypeCooperativeMatrixNV;
 }
 inline bool IsConstantInst(SpvOp opcode) {
   return opcode >= SpvOpConstantTrue && opcode <= SpvOpSpecConstantOp;

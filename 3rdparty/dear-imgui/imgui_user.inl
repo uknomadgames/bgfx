@@ -80,7 +80,7 @@ namespace ImGui
 #ifndef XBOX_BUILD
 #include "widgets/gizmo.inl"
 #endif
+#include "widgets/markdown.inl"
 #include "widgets/memory_editor.inl"
 #include "widgets/range_slider.inl"
 #include "widgets/nm_user.inl"
-

@@ -49,6 +49,7 @@ namespace ImGui
 #ifndef XBOX_BUILD
 #include "widgets/gizmo.h"
 #endif
+#include "widgets/markdown.h"
 #include "widgets/memory_editor.h"
 #include "widgets/range_slider.h"
 #include "widgets/nm_user.h"

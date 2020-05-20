@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2018 Branimir Karadzic. All rights reserved.
+ * Copyright 2011-2020 Branimir Karadzic. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
  */
 
@@ -22,17 +22,17 @@ struct PosColorVertex
 
 	static void init()
 	{
-		ms_decl
+		ms_layout
 			.begin()
 			.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
 			.add(bgfx::Attrib::Color0,   4, bgfx::AttribType::Uint8, true)
 			.end();
 	};
 
-	static bgfx::VertexDecl ms_decl;
+	static bgfx::VertexLayout ms_layout;
 };
 
-bgfx::VertexDecl PosColorVertex::ms_decl;
+bgfx::VertexLayout PosColorVertex::ms_layout;
 
 static PosColorVertex s_cubeVertices[8] =
 {
@@ -65,8 +65,8 @@ static const uint16_t s_cubeIndices[36] =
 class ExampleOcclusion : public entry::AppI
 {
 public:
-	ExampleOcclusion(const char* _name, const char* _description)
-		: entry::AppI(_name, _description)
+	ExampleOcclusion(const char* _name, const char* _description, const char* _url)
+		: entry::AppI(_name, _description, _url)
 	{
 	}
 
@@ -112,7 +112,7 @@ public:
 		m_vbh = bgfx::createVertexBuffer(
 				// Static data can be passed with bgfx::makeRef
 				bgfx::makeRef(s_cubeVertices, sizeof(s_cubeVertices) )
-				, PosColorVertex::ms_decl
+				, PosColorVertex::ms_layout
 				);
 
 		// Create static index buffer.
@@ -137,8 +137,7 @@ public:
 
 		cameraCreate();
 
-		const float initialPos[3] = { 15.5f, 0.0f, -15.5f };
-		cameraSetPosition(initialPos);
+		cameraSetPosition({ 15.5f, 0.0f, -15.5f });
 		cameraSetHorizontalAngle(bx::toRad(-45.0f) );
 
 		m_timeOffset = bx::getHPCounter();
@@ -219,8 +218,8 @@ public:
 					bgfx::setViewTransform(1, view, proj);
 					bgfx::setViewRect(1, 0, 0, uint16_t(m_width), uint16_t(m_height) );
 
-					float at[3]  = {  0.0f,  0.0f,   0.0f };
-					float eye[3] = { 17.5f, 10.0f, -17.5f };
+					const bx::Vec3 at  = {  0.0f,  0.0f,   0.0f };
+					const bx::Vec3 eye = { 17.5f, 10.0f, -17.5f };
 					bx::mtxLookAt(view, eye, at);
 
 					bgfx::setViewTransform(2, view, proj);
@@ -312,4 +311,9 @@ public:
 
 } // namespace
 
-ENTRY_IMPLEMENT_MAIN(ExampleOcclusion, "26-occlusion", "Using occlusion query for conditional rendering.");
+ENTRY_IMPLEMENT_MAIN(
+	  ExampleOcclusion
+	, "26-occlusion"
+	, "Using occlusion query for conditional rendering."
+	, "https://bkaradzic.github.io/bgfx/examples.html#occlusion"
+	);

@@ -22,23 +22,23 @@ struct PosColorVertex
 
 	static void init()
 	{
-		ms_decl
+		ms_layout
 			.begin()
 			.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
 			.add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
 			.end();
 	}
 
-	static bgfx::VertexDecl ms_decl;
+	static bgfx::VertexLayout ms_layout;
 };
 
-bgfx::VertexDecl PosColorVertex::ms_decl;
+bgfx::VertexLayout PosColorVertex::ms_layout;
 
 class ExampleVectorDisplay : public entry::AppI
 {
 public:
-	ExampleVectorDisplay(const char* _name, const char* _description)
-		: entry::AppI(_name, _description)
+	ExampleVectorDisplay(const char* _name, const char* _description, const char* _url)
+		: entry::AppI(_name, _description, _url)
 	{
 	}
 
@@ -119,8 +119,8 @@ public:
 				m_vd.resize(uint16_t(m_width), uint16_t(m_height) );
 			}
 
-			const float at[3]  = { 0.0f, 0.0f,   0.0f };
-			const float eye[3] = { 0.0f, 0.0f, -35.0f };
+			const bx::Vec3 at  = { 0.0f, 0.0f,   0.0f };
+			const bx::Vec3 eye = { 0.0f, 0.0f, -35.0f };
 
 			float view[16];
 			float proj[16];
@@ -218,4 +218,9 @@ public:
 
 } // namespace
 
-ENTRY_IMPLEMENT_MAIN(ExampleVectorDisplay, "23-vectordisplay", "Rendering lines as oldschool vectors.");
+ENTRY_IMPLEMENT_MAIN(
+	  ExampleVectorDisplay
+	, "23-vectordisplay"
+	, "Rendering lines as oldschool vectors."
+	, "https://bkaradzic.github.io/bgfx/examples.html#vectordisplay"
+	);
